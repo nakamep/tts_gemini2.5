@@ -1,0 +1,16 @@
+# Gemini TTS サービス - Railway デプロイ設定
+
+# Python バージョン指定
+[build]
+  builder = "nixpacks"
+  buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+  startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT"
+  healthcheckPath = "/"
+  healthcheckTimeout = 300
+  restartPolicyType = "on_failure"
+
+# 環境変数設定
+[variables]
+  PYTHON_VERSION = "3.11.0"
