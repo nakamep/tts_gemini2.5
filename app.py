@@ -29,12 +29,23 @@ def check_api_status():
             "key": GEMINI_API_KEY
         }
         
+        # 正しいリクエスト形式でAPIをテスト
         data = {
             "contents": [{
                 "parts": [{
                     "text": "こんにちは"
                 }]
-            }]
+            }],
+            "generation_config": {
+                "response_modalities": ["AUDIO"],
+                "speech_config": {
+                    "voice_config": {
+                        "prebuilt_voice_config": {
+                            "voice_name": "ja-JP-Neural2-C"
+                        }
+                    }
+                }
+            }
         }
         
         response = requests.post(
@@ -78,7 +89,7 @@ def text_to_speech():
         if not GEMINI_API_KEY:
             return jsonify({"status": "error", "message": "APIキーが設定されていません"}), 500
         
-        # Gemini TTS APIにリクエスト
+        # Gemini TTS APIにリクエスト（修正版）
         headers = {
             "Content-Type": "application/json"
         }
@@ -87,6 +98,7 @@ def text_to_speech():
             "key": GEMINI_API_KEY
         }
         
+        # 正しいリクエスト形式に修正
         payload = {
             "contents": [{
                 "parts": [{
@@ -94,8 +106,13 @@ def text_to_speech():
                 }]
             }],
             "generation_config": {
-                "voice": {
-                    "name": "ja-JP-Neural2-C"  # 日本語音声
+                "response_modalities": ["AUDIO"],
+                "speech_config": {
+                    "voice_config": {
+                        "prebuilt_voice_config": {
+                            "voice_name": "ja-JP-Neural2-C"  # 日本語音声
+                        }
+                    }
                 }
             }
         }
@@ -115,7 +132,15 @@ def text_to_speech():
         
         # レスポンスから音声データを取得
         response_data = response.json()
-        audio_content = response_data.get("contents", [{}])[0].get("parts", [{}])[0].get("audio", {}).get("content", "")
+        
+        # 修正: 正しいレスポンス構造からオーディオデータを取得
+        audio_content = None
+        try:
+            # 新しいレスポンス構造
+            audio_content = response_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("inline_data", {}).get("data", "")
+        except Exception:
+            # 古い構造も試す
+            audio_content = response_data.get("contents", [{}])[0].get("parts", [{}])[0].get("audio", {}).get("content", "")
         
         if not audio_content:
             return jsonify({
@@ -133,4 +158,6 @@ def text_to_speech():
         return jsonify({"status": "error", "message": f"エラー: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # 環境変数からポートを取得、なければデフォルト5000を使用
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
