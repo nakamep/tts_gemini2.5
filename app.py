@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import base64
 from flask import Flask, request, jsonify, render_template, Response
 from dotenv import load_dotenv
 
@@ -29,7 +30,7 @@ def check_api_status():
             "key": GEMINI_API_KEY
         }
         
-        # 正しいリクエスト形式でAPIをテスト
+        # 公式ドキュメントに従った正しいリクエスト形式
         data = {
             "contents": [{
                 "parts": [{
@@ -37,12 +38,12 @@ def check_api_status():
                 }]
             }],
             "generation_config": {
-                "response_modalities": ["AUDIO"],
-                "speech_config": {
-                    "voice_config": {
-                        "prebuilt_voice_config": {
-                            "voice_name": "ja-JP-Neural2-C"
-                        }
+                "response_modalities": ["AUDIO"]
+            },
+            "speech_config": {
+                "voice_config": {
+                    "prebuilt_voice_config": {
+                        "voice_name": "ja-JP-Neural2-C"
                     }
                 }
             }
@@ -89,7 +90,7 @@ def text_to_speech():
         if not GEMINI_API_KEY:
             return jsonify({"status": "error", "message": "APIキーが設定されていません"}), 500
         
-        # Gemini TTS APIにリクエスト（修正版）
+        # Gemini TTS APIにリクエスト - 公式ドキュメントに従った正しいリクエスト形式
         headers = {
             "Content-Type": "application/json"
         }
@@ -98,7 +99,6 @@ def text_to_speech():
             "key": GEMINI_API_KEY
         }
         
-        # 正しいリクエスト形式に修正
         payload = {
             "contents": [{
                 "parts": [{
@@ -106,12 +106,12 @@ def text_to_speech():
                 }]
             }],
             "generation_config": {
-                "response_modalities": ["AUDIO"],
-                "speech_config": {
-                    "voice_config": {
-                        "prebuilt_voice_config": {
-                            "voice_name": "ja-JP-Neural2-C"  # 日本語音声
-                        }
+                "response_modalities": ["AUDIO"]
+            },
+            "speech_config": {
+                "voice_config": {
+                    "prebuilt_voice_config": {
+                        "voice_name": "ja-JP-Neural2-C"
                     }
                 }
             }
@@ -133,14 +133,17 @@ def text_to_speech():
         # レスポンスから音声データを取得
         response_data = response.json()
         
-        # 修正: 正しいレスポンス構造からオーディオデータを取得
+        # 新しいレスポンス形式に対応
         audio_content = None
-        try:
-            # 新しいレスポンス構造
-            audio_content = response_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("inline_data", {}).get("data", "")
-        except Exception:
-            # 古い構造も試す
-            audio_content = response_data.get("contents", [{}])[0].get("parts", [{}])[0].get("audio", {}).get("content", "")
+        
+        # レスポンス構造を確認
+        if "candidates" in response_data and len(response_data["candidates"]) > 0:
+            candidate = response_data["candidates"][0]
+            if "content" in candidate and "parts" in candidate["content"]:
+                for part in candidate["content"]["parts"]:
+                    if "inline_data" in part and "data" in part["inline_data"]:
+                        audio_content = part["inline_data"]["data"]
+                        break
         
         if not audio_content:
             return jsonify({
@@ -148,9 +151,12 @@ def text_to_speech():
                 "message": "音声データが取得できませんでした"
             }), 500
         
+        # Base64デコード
+        audio_bytes = base64.b64decode(audio_content)
+        
         # 音声データを返す
         return Response(
-            audio_content,
+            audio_bytes,
             mimetype="audio/mpeg"
         )
         

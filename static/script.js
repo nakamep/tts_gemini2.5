@@ -2,6 +2,8 @@
 let audioPlayer = null;
 let apiStatus = false;
 let statusCheckInterval = null;
+let statusCheckCount = 0;
+const MAX_AUTO_CHECKS = 3; // 自動チェックの最大回数を制限
 
 // DOMが読み込まれたら実行
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const textInput = document.getElementById('text-input');
     const playButton = document.getElementById('play-button');
     const logArea = document.getElementById('log-area');
+    const checkStatusButton = document.getElementById('check-status-button');
     
     // 初期化
     initializeApp();
@@ -25,13 +28,30 @@ document.addEventListener('DOMContentLoaded', function() {
         generateAndPlaySpeech(textInput.value);
     });
     
+    // 状態確認ボタンのイベントリスナー
+    if (checkStatusButton) {
+        checkStatusButton.addEventListener('click', function() {
+            addLog('手動でAPI状態を確認しています...', 'info');
+            checkApiStatus();
+        });
+    }
+    
     // アプリケーションの初期化
     function initializeApp() {
         addLog('アプリケーションを初期化中...', 'info');
         checkApiStatus();
         
-        // 定期的なAPI状態チェックを設定（30秒ごと）
-        statusCheckInterval = setInterval(checkApiStatus, 30000);
+        // 定期的なAPI状態チェックを設定（5分ごと、最大3回まで）
+        statusCheckInterval = setInterval(function() {
+            if (statusCheckCount < MAX_AUTO_CHECKS) {
+                statusCheckCount++;
+                addLog(`定期的なAPI状態確認 (${statusCheckCount}/${MAX_AUTO_CHECKS})...`, 'info');
+                checkApiStatus();
+            } else {
+                clearInterval(statusCheckInterval);
+                addLog('自動API状態確認を停止しました。必要に応じて手動で確認してください。', 'info');
+            }
+        }, 300000); // 5分 = 300000ミリ秒
     }
     
     // API状態の確認
@@ -111,7 +131,11 @@ document.addEventListener('DOMContentLoaded', function() {
             addLog(`音声生成エラー: ${error.message}`, 'error');
             updateStatusUI('error', error.message);
             playButton.disabled = false;
-            checkApiStatus(); // API状態を再確認
+            
+            // APIレート制限エラーの場合は特別なメッセージを表示
+            if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('rate limit')) {
+                addLog('APIの利用制限に達しました。しばらく時間をおいてから再試行してください。', 'error');
+            }
         });
     }
     

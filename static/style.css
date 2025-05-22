@@ -58,6 +58,22 @@ h1 {
     100% { opacity: 0.5; }
 }
 
+.status-button {
+    margin-left: auto;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.status-button:hover {
+    background-color: #5a6268;
+}
+
 /* 入力エリア */
 .input-area {
     margin-bottom: 30px;
@@ -146,6 +162,17 @@ button:disabled {
     }
     
     button {
+        width: 100%;
+    }
+    
+    .status-indicator {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .status-button {
+        margin-left: 0;
+        margin-top: 10px;
         width: 100%;
     }
 }
